@@ -1,5 +1,7 @@
 # GenSEM
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21513948.svg)](https://doi.org/10.5281/zenodo.21513948)
+
 **GenSEM** -- the name states the model family: GENERALIZED structural
 equation modeling in the Skrondal & Rabe-Hesketh (2004) sense -- systems
 of simultaneous equations with latent variables (factors, random effects,
