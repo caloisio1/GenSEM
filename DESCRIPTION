@@ -1,0 +1,23 @@
+Package: GenSEM
+Title: Multilevel Multiprocess Hazard Models via Stacked Poisson
+        Estimation
+Version: 0.7.2
+Authors@R: person("Carlos", "Aloisio", role = c("aut", "cre"), email = "caloisio@gmail.com")
+Description: Fits multilevel multiprocess systems (nonrecursive stacked-Poisson class and the recursive mixed-family class with an endogenous binary exposure) of piecewise-constant
+    exponential hazard equations with correlated person-level random effects,
+    following Lillard (1993) <doi:10.1016/0304-4076(93)90106-F> and the 'gsem'
+    workflow of Bartus (2017) <doi:10.1177/1536867X1701700211>. Hazard
+    equations are estimated as stacked Poisson regressions with log-exposure
+    offsets ('glmmTMB' backend, Laplace approximation), and structural
+    coefficients of nonrecursive systems are recovered from reduced-form
+    estimates via the delta method (the 'nlcom' equivalent).
+License: GPL (>= 3)
+Encoding: UTF-8
+Imports: glmmTMB, numDeriv, stats
+Suggests: testthat (>= 3.0.0), haven, GLMMadaptive
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1
+NeedsCompilation: no
+Packaged: 2026-07-22 08:36:43 UTC; root
+Author: Carlos Aloisio [aut, cre]
+Maintainer: Carlos Aloisio <caloisio@gmail.com>

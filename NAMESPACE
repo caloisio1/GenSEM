@@ -1,0 +1,7 @@
+export(fit_recursive)
+export(fit_recursive_mlogit)
+export(split_episodes)
+export(stack_processes)
+export(fit_multiproc)
+export(recover_structural)
+importFrom(stats, as.formula, vcov, pnorm, setNames)
