@@ -198,6 +198,21 @@ nll_recursive_mlogit <- function(theta, X1, y1i, C, id1, X2, H, id2, ids, gh) {
 #'   `log s1`, `log s2`, `atanh rho`), `vcov`, `Sigma`, `family`,
 #'   `ancillary` (shape or scale on the natural scale), `convergence`,
 #'   `nll`, `Q`. Compatible with [recover_structural()].
+#' @examples
+#' \donttest{
+#' set.seed(2)
+#' n <- 60                                   # mothers
+#' u <- rnorm(n, 0, 0.5); v <- 0.4 * u + rnorm(n, 0, 0.5)
+#' sel <- data.frame(id = 1:n, z = rnorm(n))
+#' sel$treat <- as.integer(sel$z - 0.5 + v > 0)
+#' haz <- data.frame(id = 1:n, treat = sel$treat, dur = rexp(n) + 0.2)
+#' haz$death <- rbinom(n, 1, plogis(-1 - 0.5 * haz$treat + u))
+#' fit <- fit_recursive(treat ~ z, death ~ treat,
+#'                      data_sel = sel, data_haz = haz,
+#'                      id = "id", exposure = "dur", Q = 7)
+#' summary(fit)
+#' confint(fit, "haz:treat")
+#' }
 #' @export
 fit_recursive <- function(sel, haz, data_sel, data_haz, id,
                           family = c("poisson", "weibull", "gamma",
@@ -278,6 +293,22 @@ fit_recursive <- function(sel, haz, data_sel, data_haz, id,
 #' @return list of class `gensem_recursive` (see [fit_recursive()]);
 #'   coefficient names carry `sel<cat>:` prefixes and `load v:<cat>` for the
 #'   estimated loadings.
+#' @examples
+#' \donttest{
+#' set.seed(3)
+#' n <- 60
+#' v <- rnorm(n, 0, 0.6)
+#' sel <- data.frame(id = 1:n, z = rnorm(n))
+#' p <- exp(cbind(0, 0.8 * sel$z + v, -0.5 + 0.4 * sel$z + 0.5 * v))
+#' sel$choice <- factor(apply(p / rowSums(p), 1, function(pr)
+#'   sample(0:2, 1, prob = pr)))
+#' haz <- data.frame(id = 1:n, choice = sel$choice, dur = rexp(n) + 0.2)
+#' haz$death <- rbinom(n, 1, 0.25)
+#' fit <- fit_recursive_mlogit(choice ~ z, death ~ choice,
+#'                             data_sel = sel, data_haz = haz,
+#'                             id = "id", exposure = "dur", Q = 7)
+#' coef(fit)
+#' }
 #' @export
 fit_recursive_mlogit <- function(sel, haz, data_sel, data_haz, id,
                                  family = c("poisson", "weibull", "gamma",
@@ -349,6 +380,10 @@ fit_recursive_mlogit <- function(sel, haz, data_sel, data_haz, id,
 #' @return data.frame with one row per occupied segment: original columns,
 #'   exposure and event replaced segment-wise, plus `interval` (factor)
 #'   and `.t0` (segment entry time).
+#' @examples
+#' d <- data.frame(id = 1:4, death = c(0, 1, 0, 1),
+#'                 months = c(2, 5, 14, 1))
+#' split_episodes(d, event = "death", exposure = "months", breaks = c(3, 12))
 #' @export
 split_episodes <- function(data, event, exposure, breaks) {
   stopifnot(event %in% names(data), exposure %in% names(data),

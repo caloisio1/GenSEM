@@ -25,3 +25,9 @@ selection and covariate effects are
 `lambda_j = pi_jk / pi_kk` and `beta_j = pi_j0 - lambda_j * pi_k0`
 (Bartus 2017, eqs. 5-6); pass those expressions here.
 }
+\examples{
+toy <- list(coef = c(`a:x` = 0.8, `b:x` = -0.4),
+            vcov = diag(c(0.04, 0.01)))
+dimnames(toy$vcov) <- list(names(toy$coef), names(toy$coef))
+recover_structural(toy, "`a:x` / `b:x`")
+}

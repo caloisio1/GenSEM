@@ -87,3 +87,19 @@ derivatives; standard errors come from the numerical Hessian. Transparent
 but not fast: minutes, not seconds, at Q = 15. Start values come from
 separate single-equation GLMs (exponential approximation for Weibull).
 }
+\examples{
+\donttest{
+set.seed(2)
+n <- 60                                   # mothers
+u <- rnorm(n, 0, 0.5); v <- 0.4 * u + rnorm(n, 0, 0.5)
+sel <- data.frame(id = 1:n, z = rnorm(n))
+sel$treat <- as.integer(sel$z - 0.5 + v > 0)
+haz <- data.frame(id = 1:n, treat = sel$treat, dur = rexp(n) + 0.2)
+haz$death <- rbinom(n, 1, plogis(-1 - 0.5 * haz$treat + u))
+fit <- fit_recursive(treat ~ z, death ~ treat,
+                     data_sel = sel, data_haz = haz,
+                     id = "id", exposure = "dur", Q = 7)
+summary(fit)
+confint(fit, "haz:treat")
+}
+}

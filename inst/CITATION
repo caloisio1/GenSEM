@@ -1,10 +1,13 @@
 citHeader("To cite GenSEM in publications, please cite both:")
 bibentry(bibtype = "Manual",
   title  = "GenSEM: Multilevel Multiprocess Hazard Models in R",
-  author = person("Carlos", "Aloisio"),
+  author = person("Carlos", "Aloisio", email = "caloisio@gmail.com"),
   year   = "2026",
   note   = "R package version 0.8.0",
   url    = "https://github.com/caloisio1/GenSEM")
+  # TODO-DOI: cuando Zenodo emita el DOI del release v0.8.0, agregar aqui:
+  #   doi = "10.5281/zenodo.XXXXXXX"   <- REEMPLAZAR (placeholder, no publicar asi)
+  # y actualizar tambien el badge del README si se agrega.
 bibentry(bibtype = "Article",
   title   = "Multilevel multiprocess modeling with gsem",
   author  = person("Tamas", "Bartus"),

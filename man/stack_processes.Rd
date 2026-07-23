@@ -26,3 +26,12 @@ rows. Rows where the process's event indicator is missing are dropped for
 that process. The result duplicates spell rows once per applicable process
 and adds a `process` factor, an `.event` outcome, and a `.exposure` column.
 }
+\examples{
+d <- data.frame(id = rep(1:3, each = 2), x = rnorm(6),
+                birth = c(0, 1, 0, 0, 1, NA), death = c(0, 0, 0, 1, 0, 1),
+                dur = rexp(6) + 0.1)
+long <- stack_processes(d, id = "id",
+                        events = c(birth = "birth", death = "death"),
+                        exposure = "dur")
+table(long$process)
+}

@@ -1,0 +1,77 @@
+---
+title: "Getting started with GenSEM"
+author: "Carlos Aloisio (caloisio@gmail.com)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with GenSEM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+GenSEM fits multilevel multiprocess hazard systems: several event processes
+observed on the same people, whose unobserved person-level determinants are
+allowed to be correlated. The recursive class handled here pairs a discrete
+selection equation (who gets the exposure) with a duration outcome (how long
+until the event), estimated jointly by Gauss-Hermite quadrature so that
+selection on unobservables does not bias the exposure effect.
+
+This vignette simulates a small system, fits it, and reads the output. It
+runs in a few seconds and uses no external data.
+
+## A simulated selection-plus-hazard system
+
+We simulate `n` clusters (say, mothers). A latent trait `u` raises the death
+hazard; a correlated trait `v` raises the chance of treatment. Ignoring that
+correlation is exactly what biases naive hazard regressions.
+
+```{r}
+library(GenSEM)
+set.seed(42)
+n <- 120
+u <- rnorm(n, 0, 0.6)                      # hazard-side frailty
+v <- 0.5 * u + rnorm(n, 0, 0.5)            # correlated selection trait
+sel <- data.frame(id = 1:n, z = rnorm(n))  # z: instrument (selection only)
+sel$treat <- as.integer(0.8 * sel$z - 0.3 + v > 0)
+haz <- data.frame(id = 1:n, treat = sel$treat, dur = rexp(n, 1) + 0.1)
+haz$death <- rbinom(n, 1, plogis(-0.8 - 0.6 * haz$treat + u))
+```
+
+## Joint fit
+
+The selection equation gets the instrument `z`; the hazard equation gets the
+endogenous `treat`. `exposure` names the time-at-risk column.
+
+```{r}
+fit <- fit_recursive(treat ~ z, death ~ treat,
+                     data_sel = sel, data_haz = haz,
+                     id = "id", exposure = "dur", Q = 9)
+summary(fit)
+```
+
+```{r}
+confint(fit, "haz:treat")
+```
+
+## Reading the output
+
+The `haz:treat` row is the treatment effect on the log-hazard net of
+selection on unobservables: the joint model uses the estimated covariance
+between the two random effects (the `Sigma` block) to absorb the part of the
+treatment-outcome association that is due to shared latent traits. A naive
+one-equation Poisson fit of the same data attributes that shared part to the
+treatment itself. The `sel:` rows are the probit selection equation, where
+the instrument `z` should be strong; and `Sigma` reports the estimated
+variances of `u` and `v` and their covariance, whose sign tells you the
+direction of the selection.
+
+## Scope note: sampling weights
+
+GenSEM has **no support for sampling weights** (nor PSU/strata): standard
+errors are model-based and estimation is unweighted maximum likelihood. For
+complex-survey data, handle the design through covariates plus sensitivity
+analyses, or use a design-based tool. Weighted pseudo-likelihood is on the
+roadmap but is not available in this version.

@@ -16,6 +16,14 @@
 #' @param exposure name of the spell-duration column (>0).
 #' @return long data.frame with columns `process`, `.event`, `.exposure`,
 #'   plus `id` and all covariates.
+#' @examples
+#' d <- data.frame(id = rep(1:3, each = 2), x = rnorm(6),
+#'                 birth = c(0, 1, 0, 0, 1, NA), death = c(0, 0, 0, 1, 0, 1),
+#'                 dur = rexp(6) + 0.1)
+#' long <- stack_processes(d, id = "id",
+#'                         events = c(birth = "birth", death = "death"),
+#'                         exposure = "dur")
+#' table(long$process)
 #' @export
 stack_processes <- function(data, id, events, exposure) {
   stopifnot(is.data.frame(data), id %in% names(data),
@@ -69,6 +77,18 @@ stack_processes <- function(data, id, events, exposure) {
 #'   (GLMMadaptive backend only).
 #' @param ... passed to the backend fitting function.
 #' @return a glmmTMB or MixMod fit.
+#' @examples
+#' \donttest{
+#' set.seed(1)
+#' n <- 80
+#' d <- data.frame(id = 1:n, x = rnorm(n),
+#'                 e1 = rbinom(n, 1, 0.5), e2 = rbinom(n, 1, 0.3),
+#'                 dur = rexp(n) + 0.2)
+#' long <- stack_processes(d, id = "id", events = c(a = "e1", b = "e2"),
+#'                         exposure = "dur")
+#' fit <- fit_multiproc(long, ~ x, id = "id")
+#' glmmTMB::fixef(fit)$cond
+#' }
 #' @export
 fit_multiproc <- function(long, fixed, id, shared_re = FALSE,
                           backend = c("glmmTMB", "GLMMadaptive"),
@@ -112,6 +132,11 @@ fit_multiproc <- function(long, fixed, id, shared_re = FALSE,
 #'   backtick-quoted, e.g.
 #'   `"`processbirth2:hereduc3` - (`processbirth2:mardur`/`processdivorce:mardur`) * `processdivorce:hereduc3`"`.
 #' @return data.frame with estimate, delta-method SE, z, p, and 95% CI.
+#' @examples
+#' toy <- list(coef = c(`a:x` = 0.8, `b:x` = -0.4),
+#'             vcov = diag(c(0.04, 0.01)))
+#' dimnames(toy$vcov) <- list(names(toy$coef), names(toy$coef))
+#' recover_structural(toy, "`a:x` / `b:x`")
 #' @export
 recover_structural <- function(fit, expr) {
   if (inherits(fit, "glmmTMB")) {

@@ -55,3 +55,16 @@ Estimation is by Laplace approximation (glmmTMB), not adaptive quadrature
 (gsem default): small numerical differences against gsem are expected and
 should be reported, not hidden.
 }
+\examples{
+\donttest{
+set.seed(1)
+n <- 80
+d <- data.frame(id = 1:n, x = rnorm(n),
+                e1 = rbinom(n, 1, 0.5), e2 = rbinom(n, 1, 0.3),
+                dur = rexp(n) + 0.2)
+long <- stack_processes(d, id = "id", events = c(a = "e1", b = "e2"),
+                        exposure = "dur")
+fit <- fit_multiproc(long, ~ x, id = "id")
+glmmTMB::fixef(fit)$cond
+}
+}

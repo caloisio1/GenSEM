@@ -60,3 +60,20 @@ parameterisation in Bartus (2017, sec. 5.3). Include the exposure in
 `haz` as a factor. Both hazard families of [fit_recursive()] are
 available. Identification requires a selection-only instrument.
 }
+\examples{
+\donttest{
+set.seed(3)
+n <- 60
+v <- rnorm(n, 0, 0.6)
+sel <- data.frame(id = 1:n, z = rnorm(n))
+p <- exp(cbind(0, 0.8 * sel$z + v, -0.5 + 0.4 * sel$z + 0.5 * v))
+sel$choice <- factor(apply(p / rowSums(p), 1, function(pr)
+  sample(0:2, 1, prob = pr)))
+haz <- data.frame(id = 1:n, choice = sel$choice, dur = rexp(n) + 0.2)
+haz$death <- rbinom(n, 1, 0.25)
+fit <- fit_recursive_mlogit(choice ~ z, death ~ choice,
+                            data_sel = sel, data_haz = haz,
+                            id = "id", exposure = "dur", Q = 7)
+coef(fit)
+}
+}

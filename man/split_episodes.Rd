@@ -29,3 +29,8 @@ exponential approximates arbitrary duration dependence (Bartus 2017,
 p. 459); for monotone hazards, `family = "weibull"` in the recursive
 fitters is the parametric alternative.
 }
+\examples{
+d <- data.frame(id = 1:4, death = c(0, 1, 0, 1),
+                months = c(2, 5, 14, 1))
+split_episodes(d, event = "death", exposure = "months", breaks = c(3, 12))
+}
