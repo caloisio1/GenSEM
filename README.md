@@ -1,65 +1,34 @@
 # GenSEM
 
+<!-- badges: start -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21513948.svg)](https://doi.org/10.5281/zenodo.21513948)
+[![R-CMD-check](https://github.com/caloisio1/GenSEM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/caloisio1/GenSEM/actions/workflows/R-CMD-check.yaml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- badges: end -->
 
-**GenSEM** -- the name states the model family: GENERALIZED structural
-equation modeling in the Skrondal & Rabe-Hesketh (2004) sense -- systems
-of simultaneous equations with latent variables (factors, random effects,
-frailties are the same object) over non-Gaussian response families. Scope
-honesty in the first paragraph, where it belongs: GenSEM implements the
-multiprocess / event-history SUBCLASS of that family (Lillard 1993;
-Bartus 2017, whose three published examples are this package's validation
-gate). It is NOT a port of Stata's gsem command and does not aim at its
-full family/link matrix; what it does cover, it covers with a fully
-inspectable likelihood.
+**Multilevel multiprocess event-history models in R.** Systems of hazard equations estimated jointly, with person-level random effects that are correlated *across* equations — the models of Lillard (1993), following the estimation workflow of Bartus (2017).
 
-**Relation to lavaan, stated precisely:** complementary in SCOPE, not in
-architecture. GenSEM covers the multiprocess/event-history class that
-lies outside lavaan's reach; it shares no syntax, objects, or dependency
-with lavaan. The one genuine workflow bridge: fit a measurement model in
-lavaan, export factor scores, use them as GenSEM covariates -- with the
-standard caveat that factor scores carry measurement error (attenuation
-bias; use Croon-style corrections or plausible values for serious work).
+## What it does
 
-Multilevel multiprocess hazard models in R: systems of piecewise-constant
-exponential hazard equations with correlated person-level random effects
-(Lillard 1993), estimated as stacked Poisson regressions with log-exposure
-offsets, following the `gsem` workflow of Bartus (2017, *Stata Journal* 17(2)).
+Many life-course questions involve two or more processes that cannot be assumed independent. Does hospital delivery affect subsequent fertility, or do women who deliver in hospital differ in unmeasured ways that also shape their fertility? Does leaving school raise the hazard of a first birth, or does a common unobserved disposition drive both? Estimating the two processes separately answers neither question: it attributes to the covariate what may belong to the selection.
 
-Four functions. The nonrecursive pipeline:
+GenSEM estimates such systems jointly. Each equation carries its own random effect; the covariance between those random effects is a free parameter, and it is what measures the endogenous selection. Duration processes are handled as piecewise-constant exponential hazards estimated as stacked Poisson regressions with log-exposure offsets (Holford, 1980), or through parametric survival families.
 
-```r
-long <- stack_processes(spells, id = "id",
-                        events = c(birth2 = "birth2", divorce = "divorce"),
-                        exposure = "dur")
-fit  <- fit_multiproc(long, ~ hereduc3 + age + mardur, id = "id")
-recover_structural(fit,   # nlcom equivalent, delta-method SE
-  "`processbirth2:hereduc3` - (`processbirth2:mardur`/`processdivorce:mardur`) * `processdivorce:hereduc3`")
-```
+Two model classes are supported:
 
-And the recursive mixed-family class (Bartus 2017, eq. 7: endogenous binary
-exposure; probit selection + Poisson hazard with correlated random
-intercepts), fit by an explicit, fully inspectable joint likelihood
-integrated with 2D Gauss-Hermite quadrature:
+- **Nonrecursive systems** — several hazard equations with correlated random effects, where the structural effect of one process on another is recovered from the reduced form under exclusion restrictions (Bartus, 2017, eqs. 5–6).
+- **Recursive systems with an endogenous exposure** — a binary or unordered categorical selection equation and a hazard equation, fitted by an explicit joint likelihood with correlated random intercepts (Bartus, 2017, eq. 7).
 
-```r
-fit <- fit_recursive(hospital ~ distance + edu,   # instrument: distance
-                     death ~ hospital + edu,
-                     data_sel = dsel, data_haz = dhaz,
-                     id = "id", exposure = "dur", Q = 15)
-fit$coef["haz:hospital"]   # structural effect of the endogenous dummy
-fit$Sigma                  # random-effect covariance
-```
+## Why this package
 
-Transparent but not fast (BFGS + numerical derivatives over Q^2 nodes:
-minutes, not seconds). Identification requires an excluded instrument in the
-selection equation.
+Models of this class were long the domain of aML (Lillard & Panis), now discontinued, and are today most commonly fitted with Stata's `gsem`. R has excellent tools for *shared*-frailty survival models — where one process carries one random effect — but no dedicated implementation of *multiprocess* models, where distinct equations carry distinct, correlated random effects.
 
-`fit_recursive_mlogit()` extends the same likelihood to a C-category
-unordered exposure (multinomial logit selection, per-category loadings on
-the selection random effect, first loading fixed to 1 as in gsem), and
-`split_episodes()` provides episode splitting for piecewise-constant
-duration dependence.
+GenSEM aims to make that class routine rather than artisanal:
+
+- **A purpose-built workflow.** Exposure construction, process stacking, and the recovery of structural effects from the reduced form are functions, not hand-written data manipulation. The exposure step in particular asserts its own correctness — a mis-specified person-period exposure is the most common source of silent error in this class of model.
+- **An inspectable likelihood.** The recursive fitters evaluate a joint likelihood written out explicitly and integrated by Gauss–Hermite quadrature over the random effects. Nothing is delegated to a black box: the integrand can be read, and the number of quadrature nodes is under user control.
+- **Documented estimation trade-offs.** Where an approximation degrades, the package says so and ships the remedy, with the supporting simulation pinned in the test suite (see *Choosing a backend*).
+- **Validation against published results.** All three worked examples of Bartus (2017) are replication targets; the scripts are shipped in `inst/validation/`.
 
 ## Installation
 
@@ -68,99 +37,110 @@ duration dependence.
 remotes::install_github("caloisio1/GenSEM")
 ```
 
-## What it does not do (by design)
+GenSEM is not yet on CRAN.
 
-- **Three-level nesting** is implemented in
-  `fit_recursive(..., nested = "cluster_col", Qw = 7)`: spells nested in
-  LEVEL-2 CLUSTERS nested in LEVEL-1 UNITS (`id`). A cluster-level frailty
-  w ~ N(0, sw^2) enters the HAZARD in addition to the unit-level (u, v)
-  pair, integrated by nested Gauss-Hermite quadrature; the inner integral
-  over w is evaluated per u-node (Q x Qw kernel passes, not Q^2 x Qw),
-  exploiting the fact that u depends only on the first Cholesky axis.
-  The structure is domain-agnostic: children within mothers (Bartus's
-  children data), episodes within youths within schools or territories,
-  jobs within workers within firms. Note where each equation lives:
-  selection and the (u, v) pair sit at the `id` level, the frailty at the
-  `nested` level -- map your data so the endogenous exposure is an
-  `id`-level choice. Scope: frailty on the hazard side only; probit fitter
-  only (three-level mlogit is a follow-up). Four or more levels are out of
-  scope for three written reasons: (i) structurally, a fourth level breaks
-  the independence of `id` units, turning the integrator recursive -- a
-  different architecture, not one more loop; (ii) numerically, non-adaptive
-  quadrature degrades and costs multiply per level, and at that point the
-  honest tool is MCMC (`brms`), where extra levels are nearly free; (iii)
-  empirically, the Lillard/Bartus class and its published validation
-  targets live at two and three levels. The boundary is where these
-  reasons coincide, not a theorem: a real four-level application with
-  published numbers would reopen it.
-- **Survival families -- read the metric before comparing coefficients.**
-  Implemented: `weibull` (PROPORTIONAL HAZARDS: positive coefficient =
-  higher hazard), and `gamma` / `loglogistic` (ACCELERATED FAILURE TIME:
-  positive coefficient = longer survival = lower hazard). Do not compare
-  coefficients across the two metrics. Gamma here is the two-parameter
-  gamma AFT with rate exp(-lp) (mean k*exp(lp)); note Stata's `streg`
-  "gamma" is the three-parameter GENERALISED gamma -- verify
-  parameterisations before any cross-engine numeric comparison. `lognormal`
-  (AFT, sigma estimated) completes the set: all five gsem survival
-  families are now covered (exponential = weibull with shape 1).
-  All survival families support right censoring and left truncation
-  (`entry`); for non-monotone hazards under the Poisson family, use
-  `split_episodes()` + interval dummies (Bartus 2017, p. 459).
-- **Latent measurement models**: permanently out of scope -- that is
-  lavaan's job; duplicating it is the ambition that sinks packages.
-- **Two estimation backends, no black boxes**: `backend = "glmmTMB"`
-  (Laplace approximation; fast, default) or `backend = "GLMMadaptive"`
-  (adaptive Gauss-Hermite quadrature, the published algorithm of
-  Rabe-Hesketh, Skrondal & Pickles 2005 -- the same one gsem implements).
-  In the sparse regime (one spell per person), a 24-replication Monte Carlo
-  (true var(u) = 0.30, n = 2000) gives mean bias +0.076 for Laplace and
-  +0.001 for AGHQ-11; the test suite pins both facts. Prefer AGHQ when
-  spells per person are few; note its cost grows as nAGQ^k with k
-  processes.
-- **Identification is the analyst's job**: nonrecursive systems require
-  excluded instruments (Bartus 2017, eq. 5-6; Maddala's condition).
-  `recover_structural()` computes what you ask; it cannot make an
-  unidentified system identified.
-- **Survey weights**: not supported; weighted multilevel pseudo-likelihood
-  with level-specific scaling is out of scope for v0.1.
+## Quick start
 
-## Validation status
+A recursive system: an endogenous binary exposure (`hospital`, instrumented by `distance`) and a hazard for `death`.
 
-- **Simulation suite**: 80 assertions, 0 failures on the development container
-  AND on an independent Windows/R 4.6.1 machine (seeded-truth recovery for
-  every family, backend, and nesting mode; Laplace sparse-regime bias pinned).
-  Operational note: install with `--install-tests`, and set
-  `NOT_CRAN=true` -- otherwise heavy tests silently skip and the green is
-  empty.
-- **Published-results gate (Bartus 2017, all three examples; JOB1 run,
-  21 Jul 2026)**: Example 1 -- all six fixed effects replicate to max diff
-  0.017 with spell-length exposure and the GLMMadaptive backend (Laplace is
-  ruled out there: 246 absorbing events in 2121 women inflate var(V) to 61);
-  variance components fall inside the published CIs (var(V) is weakly
-  identified in the original itself: SE 0.379). Example 3 (mlogit) passes
-  its canonical criteria. Example 2 replicates var(V) (3.53 vs 4.15) under
-  Bartus's exact likelihood design, in which the probit selection equation
-  enters ONCE PER SPELL (N = 2002; survivors' rows are duplicated).
-- **Selection-design semantics, stated openly**: GenSEM expresses both
-  designs through `data_sel` -- the package imposes neither. The docs
-  recommend one row per selection unit (duplicating probit rows inflates
-  the selection information and understates its SEs); the replication
-  scripts use the as-published spell-level frame, declared as such.
-  Replicating is not endorsing.
-- **What the gate taught about integration**: the residual gaps first
-  attributed to "the quadrature gap" were likelihood-design mismatches;
-  non-adaptive GH was fully converged from moderate Q (Q = 21/31/41 and
-  nAGQ = 11/15/21 identical to 4 decimals). The one genuine integration
-  pathology found is Laplace in sparse absorbing regimes -- remedy shipped
-  (`backend = "GLMMadaptive"`). An adaptive inner quadrature for the
-  recursive fitters is therefore NOT on the roadmap: the evidence removed
-  its justification.
-- **Data caveat**: children1.dta is currently in no public archive; the
-  Example 2 run used a verified reconstruction (see the script header).
-  Revalidate if the original resurfaces.
+```r
+library(GenSEM)
+
+fit <- fit_recursive(hospital ~ distance + edu,   # selection equation
+                     death ~ hospital + edu,      # hazard equation
+                     data_sel = dsel, data_haz = dhaz,
+                     id = "id", exposure = "dur", Q = 15)
+
+summary(fit)
+coef(fit)["haz:hospital"]  # structural effect of the endogenous exposure
+fit$Sigma                  # random-effect covariance: the selection parameter
+confint(fit)
+```
+
+The fitted object supports `print()`, `summary()`, `coef()`, `vcov()`, `confint()` and `logLik()`.
+
+Identification requires an excluded instrument in the selection equation — a variable that shifts the exposure and is excluded from the hazard. The package cannot supply one, and `recover_structural()` will compute what it is asked to compute whether or not the system is identified.
+
+A nonrecursive system follows the same shape:
+
+```r
+long <- stack_processes(spells, id = "id",
+                        events = c(birth2 = "birth2", divorce = "divorce"),
+                        exposure = "dur")
+
+fit <- fit_multiproc(long, ~ hereduc3 + age + mardur, id = "id")
+
+recover_structural(fit,    # delta-method SE, equivalent to Stata's nlcom
+  "`processbirth2:hereduc3` - (`processbirth2:mardur`/`processdivorce:mardur`) * `processdivorce:hereduc3`")
+```
+
+## Features
+
+| | |
+|---|---|
+| **Duration processes** | Piecewise-constant exponential hazards as stacked Poisson; `split_episodes()` for episode splitting and non-monotone duration dependence |
+| **Survival families** | `weibull` (proportional hazards); `gamma`, `loglogistic`, `lognormal` (accelerated failure time); the exponential case is the piecewise-constant `poisson` route. Coefficients are not comparable across the two metrics |
+| **Censoring** | Right censoring and left truncation (delayed entry) throughout |
+| **Endogenous exposures** | Binary via probit selection (`fit_recursive()`); *C*-category unordered via multinomial logit with per-category loadings (`fit_recursive_mlogit()`) |
+| **Multilevel structure** | Two levels by default; three levels via `fit_recursive(..., nested = "cluster_col", Qw = 7)` — spells within clusters within units, with a cluster-level frailty on the hazard |
+| **Integration** | Gauss–Hermite quadrature with user-controlled nodes; nested quadrature for three-level models |
+
+## Choosing a backend
+
+`fit_multiproc()` offers two estimation backends:
+
+- `backend = "glmmTMB"` — Laplace approximation. Fast, and the default.
+- `backend = "GLMMadaptive"` — adaptive Gauss–Hermite quadrature; the algorithm of Rabe-Hesketh, Skrondal & Pickles (2005).
+
+The choice matters in sparse regimes. With one spell per person, the Laplace approximation overestimates the random-effect variance; the test suite pins both the bias (seeded truth var(u) = 0.3, n = 4000) and the correction — at n = 2000 the AGHQ estimate with 11 nodes is asserted closer to the seeded truth than Laplace. Prefer AGHQ when spells per person are few or when events are strongly absorbing; note that its cost grows as *nAGQ^k* with *k* processes.
+
+The recursive fitters are transparent rather than fast: BFGS with numerical derivatives over *Q²* nodes takes minutes, not seconds.
+
+## Scope
+
+GenSEM implements the multiprocess / event-history subclass of generalized structural equation modeling in the sense of Skrondal & Rabe-Hesketh (2004) — systems of simultaneous equations with latent variables (factors, random effects and frailties being the same object) over non-Gaussian responses. It is not a port of Stata's `gsem` and does not target its full family/link matrix.
+
+Deliberately out of scope:
+
+- **Latent measurement models.** That is lavaan's domain. The workflow bridge, when needed, is to fit the measurement model in lavaan, export factor scores and use them as GenSEM covariates — with the standard caveat that factor scores carry measurement error, so Croon-style corrections or plausible values are advisable for serious work.
+- **Survey weights.** Weighted multilevel pseudo-likelihood with level-specific scaling is not implemented. Complex-survey designs require design covariates plus sensitivity analysis, or another tool.
+- **Four or more levels.** A fourth level breaks the independence of top-level units and makes the integrator recursive — a different architecture rather than one more loop — while non-adaptive quadrature degrades and cost multiplies per level. At that point the honest tool is MCMC (e.g. **brms**), where additional levels are nearly free.
+
+## Validation
+
+- **Simulation suite:** 92 assertions, 0 failures (Windows, R 4.6.1). Seeded-truth recovery for every family, backend and nesting mode.
+- **Published-results gate:** all three worked examples of Bartus (2017).
+  - *Example 1* — six fixed effects replicate to a maximum absolute difference of 0.017; variance components fall inside the published confidence intervals.
+  - *Example 3* — passes its canonical criteria.
+  - *Example 2* — replicates the variance component within the pre-registered band. The coefficient on the endogenous exposure differs from the published point estimate (−0.788 against −0.513). Under exact-likelihood evaluation, converged for Q ≥ 61, our estimate dominates the published one by 1.33 log-likelihood units, while the published single-equation hazard model (no selection equation) replicates to within 0.0002 of its published −0.382. The published value corresponds to the optimum of the default 7-node adaptive quadrature rather than of the exact likelihood. Replication criteria therefore use published standard-error bands, not point tolerances, and the divergence is documented rather than tuned away.
+- **Reproducibility note:** `children1.dta` is currently in no public archive; the Example 2 run used a verified reconstruction, documented in the script header.
+
+To run the full suite, install with `--install-tests` and set `NOT_CRAN=true`; otherwise the heavy tests skip silently.
+
+## Related work
+
+For *shared*-frailty survival models — one process, one random effect — R is already well served by **survival**, **coxme**, **frailtypack**, **parfm** and **frailtyEM**; GenSEM is not an alternative to these. For multiprocess systems, a determined user can assemble something similar by stacking processes in **glmmTMB** with an unstructured process-level covariance, or by specifying a multivariate model with correlated group-level effects in **brms**. GenSEM's contribution is to make that construction a documented, validated workflow rather than a bespoke one, with the pitfalls it encountered along the way encoded as assertions.
+
+## Citation
+
+```r
+citation("GenSEM")
+```
+
+Aloisio, C. (2026). *GenSEM: Multilevel Multiprocess Hazard Models in R*. R package version 0.8.0. https://doi.org/10.5281/zenodo.21513949
 
 ## References
 
-Bartus (2017) *Stata Journal* 17(2):442-461. Lillard (1993) *J. Econometrics*
-56:189-217. Holford (1980) *Biometrics* 36:299-305. Skrondal & Rabe-Hesketh
-(2004) *Generalized Latent Variable Modeling*.
+Bartus, T. (2017). Multilevel multiprocess modeling with gsem. *The Stata Journal*, 17(2), 442–461. https://doi.org/10.1177/1536867X1701700211
+
+Holford, T. R. (1980). The analysis of rates and of survivorship using log-linear models. *Biometrics*, 36(2), 299–305. https://doi.org/10.2307/2529982
+
+Lillard, L. A. (1993). Simultaneous equations for hazards: Marriage duration and fertility timing. *Journal of Econometrics*, 56(1–2), 189–217. https://doi.org/10.1016/0304-4076(93)90106-F
+
+Rabe-Hesketh, S., Skrondal, A., & Pickles, A. (2005). Maximum likelihood estimation of limited and discrete dependent variable models with nested random effects. *Journal of Econometrics*, 128(2), 301–323. https://doi.org/10.1016/j.jeconom.2004.08.017
+
+Skrondal, A., & Rabe-Hesketh, S. (2004). *Generalized Latent Variable Modeling: Multilevel, Longitudinal, and Structural Equation Models*. Chapman & Hall/CRC. https://doi.org/10.1201/9780203489437
+
+Croon, M. (2002). Using predicted latent scores in general latent structure models. In G. A. Marcoulides & I. Moustaki (Eds.), *Latent Variable and Latent Structure Models* (pp. 195–223). Lawrence Erlbaum.
+
+Brooks, M. E., et al. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. *The R Journal*, 9(2), 378–400. https://doi.org/10.32614/RJ-2017-066
