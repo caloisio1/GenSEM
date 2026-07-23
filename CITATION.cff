@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "GenSEM: Multilevel Multiprocess Hazard Models in R"
+version: 0.8.0
+authors:
+  - family-names: "Aloisio"
+    given-names: "Carlos"
+    email: "caloisio@gmail.com"
+license: GPL-3.0-or-later
+repository-code: "https://github.com/caloisio1/GenSEM"
+date-released: "2026-07-23"
