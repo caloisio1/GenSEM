@@ -59,6 +59,13 @@ the selection random effect, first loading fixed to 1 as in gsem), and
 `split_episodes()` provides episode splitting for piecewise-constant
 duration dependence.
 
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("caloisio1/GenSEM")
+```
+
 ## What it does not do (by design)
 
 - **Three-level nesting** is implemented in

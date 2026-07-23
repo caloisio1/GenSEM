@@ -1,0 +1,13 @@
+citHeader("To cite GenSEM in publications, please cite both:")
+bibentry(bibtype = "Manual",
+  title  = "GenSEM: Multilevel Multiprocess Hazard Models in R",
+  author = person("Carlos", "Aloisio"),
+  year   = "2026",
+  note   = "R package version 0.8.0",
+  url    = "https://github.com/caloisio1/GenSEM")
+bibentry(bibtype = "Article",
+  title   = "Multilevel multiprocess modeling with gsem",
+  author  = person("Tamas", "Bartus"),
+  journal = "The Stata Journal",
+  year    = "2017", volume = "17", number = "2", pages = "442--461",
+  doi     = "10.1177/1536867X1701700211")
