@@ -1,10 +1,12 @@
 # GenSEM
 
 <!-- badges: start -->
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21513948.svg)](https://doi.org/10.5281/zenodo.21513948)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21513948-blue.svg)](https://doi.org/10.5281/zenodo.21513948)
 [![R-CMD-check](https://github.com/caloisio1/GenSEM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/caloisio1/GenSEM/actions/workflows/R-CMD-check.yaml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 <!-- badges: end -->
+
+**DOI:** [10.5281/zenodo.21513948](https://doi.org/10.5281/zenodo.21513948) (concept, siempre la última versión) · v0.8.0: [10.5281/zenodo.21513949](https://doi.org/10.5281/zenodo.21513949)
 
 **Multilevel multiprocess event-history models in R.** Systems of hazard equations estimated jointly, with person-level random effects that are correlated *across* equations — the models of Lillard (1993), following the estimation workflow of Bartus (2017).
 
